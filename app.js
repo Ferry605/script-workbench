@@ -763,6 +763,312 @@ if(navigator.share){navigator.share({title:'剧本工作台 · 命令提示词',
 else{copyCmd();}}
 
 
+
+// ============================================================
+// 文稿编辑器 · Editor
+// ============================================================
+
+// 字数统计
+function edCount(){
+  const ta=document.getElementById('edTextarea');
+  if(!ta)return;
+  const v=ta.value;
+  const chars=v.replace(/\s/g,'').length;
+  const words=v.trim()?v.trim().split(/[\s,，。、；：""''（）【】《》……——]+/).filter(Boolean).length:0;
+  const sents=(v.match(/[。！？.!?]+/g)||[]).length;
+  const stats=document.getElementById('edStats');
+  if(!v.trim()){stats.style.display='none';return;}
+  stats.style.display='block';
+  document.getElementById('edChars').textContent=chars;
+  document.getElementById('edWords').textContent=words;
+  document.getElementById('edSents').textContent=sents;
+}
+
+// 文件拖放
+function edHandleDrop(ev){
+  ev.preventDefault();
+  ev.target.style.borderColor='';
+  const f=ev.dataTransfer.files[0];
+  if(f) edHandleFile(f);
+}
+
+// 读取文件
+function edHandleFile(f){
+  if(!f)return;
+  const ext=f.name.split('.').pop().toLowerCase();
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const content=e.target.result;
+    // strip BOM if present
+    const clean=content.replace(/^\uFEFF/,'');
+    document.getElementById('edTextarea').value=clean;
+    edCount();
+    toast('✓ 已加载：'+f.name);
+  };
+  reader.readAsText(f,'UTF-8');
+}
+
+// 导入成文
+function edImportGen(){
+  const a=document.getElementById('aOutput');
+  const g=document.getElementById('gOutput');
+  const txt=((a&&a.style.display!=='none'&&a.textContent.trim())?a.textContent:g.textContent||'').trim();
+  if(!txt){toast('无可用成文，请先生成');return;}
+  document.getElementById('edTextarea').value=txt;
+  edCount();
+  toast('✓ 已导入成文');
+}
+
+// 清空
+function edClear(){
+  document.getElementById('edTextarea').value='';
+  document.getElementById('edStats').style.display='none';
+  document.getElementById('edCheckResult').style.display='none';
+  document.getElementById('edFindCount').textContent='';
+  edClearHighlight();
+}
+
+function edClearHighlight(){
+  const ta=document.getElementById('edTextarea');
+  if(!ta)return;
+  const v=ta.value;
+  ta.value=v; // trigger re-render to clear browser highlight
+}
+
+// --- 检查逻辑 ---
+function edCheck(type){
+  const ta=document.getElementById('edTextarea');
+  const txt=ta.value.trim();
+  if(!txt){toast('请先输入或导入文稿');return;}
+
+  const results=[];
+  const issues=[];
+
+  const STAGE_PATTERNS=[
+    /\s*\u3010[画面字幕旁白解说黑屏淡入淡出]\u3011\s*/g,
+    /\s*\u3010[：:][^\u3011]+\u3011\s*/g,
+    /\s*\u300a[^\u300a\u300b]+\u300b\s*/g,
+    /\s*\[[^\[\]]*[画面|字幕|旁白|解说|黑屏|淡入|淡出|切|转场|特写|全景|近景|远景]\]\s*/gi,
+    /\s*\{[^{}]*[画面|字幕|旁白|解说|黑屏|淡入|淡出]\}\s*/gi,
+  ];
+  const STAGE_NAMES=['【画面】','【字幕】','【旁白】','【解说】','【黑屏】','【淡入】','【淡出】','『画面』','『字幕』','『旁白』','『解说』','『黑屏』','[画面]','[字幕]','[旁白]','[黑屏]','[切]','[转场]','[特写]'];
+
+  if(type==='stage'||type==='all'){
+    const found=[];
+    STAGE_NAMES.forEach(p=>{let i=txt.indexOf(p);while(i>-1){found.push({p,i});i=txt.indexOf(p,i+1);}});
+    if(found.length)issues.push({t:'stage',n:found.length,d:found.slice(0,5).map(x=>'「'+x.p+'」').join('、')+(found.length>5?' …':'')});
+    else results.push('\u2705 无舞台指示');
+  }
+  if(type==='punct'||type==='all'){
+    // 检查连续标点
+    const dup=(txt.match(/[。！？，、；：""''（）【】····]{2,}/g)||[]);
+    // 检查混用中英文标点
+    const enPunct=(txt.match(/[.,!?;:'"()\[\]]{2,}/g)||[]);
+    if(dup.length||enPunct.length){
+      const arr=[];
+      if(dup.length)arr.push('连续标点 '+dup.length+' 处');
+      if(enPunct.length)arr.push('英文标点 '+enPunct.length+' 处');
+      issues.push({t:'punct',n:dup.length+enPunct.length,d:arr.join('、')});
+    } else results.push('\u2705 标点正常');
+  }
+  if(type==='dialogue'||type==='all'){
+    // 检查「」不成对
+    const opens=(txt.match(/\u300c/g)||[]).length;
+    const closes=(txt.match(/\u300d/g)||[]).length;
+    // 检查引号不成对
+    const q1=(txt.match(/"/g)||[]).length;
+    const q2=(txt.match(/'/g)||[]).length;
+    if(opens!==closes||q1%2!==0||q2%2!==0){
+      const arr=[];
+      if(opens!==closes)arr.push('「」不成对 ('+opens+'/'+closes+')');
+      if(q1%2!==0)arr.push('英文双引号不成对');
+      if(q2%2!==0)arr.push('英文单引号不成对');
+      issues.push({t:'dialogue',n:arr.length,d:arr.join('、')});
+    } else results.push('\u2705 对话格式正常');
+  }
+  if(type==='repeat'||type==='all'){
+    const words=txt.match(/[\u4e00-\u9fa5]{2,}/g)||[];
+    const freq={};
+    words.forEach(w=>{if(!['的','了','是','在','和','就','都','而','也','与','着','一个','我们','你们','他们','什么','这个','那个','没有','有的'].includes(w))freq[w]=(freq[w]||0)+1;});
+    const repeated=Object.entries(freq).filter(([k,v])=>v>=5).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    if(repeated.length)issues.push({t:'repeat',n:repeated.length,d:repeated.map(([k,v])=>'「'+k+'」x'+v+'次').join('、')});
+    else results.push('\u2705 无明显重复词');
+  }
+  if(type==='space'||type==='all'){
+    const problems=[];
+    if(/\n{3,}/.test(txt))problems.push('连续空行');
+    if(/\s{3,}/.test(txt))problems.push('连续空格');
+    if(/^\s+|\s+$/m.test(txt))problems.push('行首尾有多余空格');
+    if(problems.length)issues.push({t:'space',n:problems.length,d:problems.join('、')});
+    else results.push('\u2705 空白正常');
+  }
+
+  // 显示结果
+  const el=document.getElementById('edCheckResult');
+  el.style.display='block';
+  let html='';
+  if(issues.length){
+    issues.forEach(it=>{
+      const labels={stage:'\u{1F3AC} 舞台指示',punct:'\u3002 标点',dialogue:'\u{1F4AC} 对话',repeat:'\u{1F501} 重复',space:'\u3000 空白'};
+      const icon=it.t==='stage'?'\u26C8':it.t==='punct'?'\u3002':it.t==='dialogue'?'\u{1F4AC}':it.t==='repeat'?'\u{1F501}':'';
+      html+='<div style="margin-bottom:6px"><b>'+icon+' '+it.n+' \u53e1'+it.t+'问题：</b></div>';
+      html+='<div style="color:var(--ink-mute);padding-left:12px">'+it.d+'</div>';
+    });
+  }
+  results.forEach(r=>{html+='<div style="color:#2a9d5c;margin-bottom:4px">'+r+'</div>';});
+  el.innerHTML=html||'\u2705 未发现问题';
+}
+
+// --- 修复逻辑 ---
+function edFix(type){
+  const ta=document.getElementById('edTextarea');
+  let txt=ta.value;
+  let fixed=0;
+
+  if(type==='stage'||type==='normalize'){
+    const STAGE_NAMES=['【画面】','【字幕】','【旁白】','【解说】','【黑屏】','【淡入】','【淡出】','『画面』','『字幕』','『旁白』','『解说』','『黑屏』','[画面]','[字幕]','[旁白]','[黑屏]','[切]','[转场]','[特写]','[全景]','[近景]','[远景]','[特写]'];
+    STAGE_NAMES.forEach(p=>{const c=txt.split(p).length-1;if(c>0){fixed+=c;txt=txt.split(p).join('');}});
+    // 去掉 【xxx】格式
+    txt=txt.replace(/\u3010[^\u3011]+\u3011/g,m=>{fixed++;return '';});
+    txt=txt.replace(/\u300a[^\u300a\u300b]+\u300b/g,m=>{fixed++;return '';});
+  }
+  if(type==='punct'||type==='normalize'){
+    // 统一标点：英文→中文
+    const map={'，':',','。':' .','！':'!','？':'?','：':':','；':';','「':'"','」':'"','『':"'",'』':"'"};
+    Object.entries({'，':',','。':'.','！':'!','？':'?','：':':','；':';','「':'"','」':'"','『':"'","』":"'"}).forEach(([k,v])=>{
+      // 只处理连续的英文字符场景下需要转换的情况
+    });
+    // 统一引号嵌套
+    // 去除连续标点
+    const before=txt;
+    txt=txt.replace(/[。！？]{2,}/g,m=>m[0]);
+    txt=txt.replace(/[，、；：]{2,}/g,m=>m[0]);
+    txt=txt.replace(/\s{2,}/g,' ');
+    fixed+=(before!==txt)?1:0;
+  }
+  if(type==='trim'||type==='normalize'){
+    const before=txt;
+    txt=txt.replace(/\n{3,}/g,'\n\n');
+    txt=txt.replace(/[ \t]{2,}/g,' ');
+    txt=txt.replace(/^\s+|\s+$/gm,'');
+    fixed+=(before!==txt)?1:0;
+  }
+  if(type==='dialogue'||type==='normalize'){
+    // 统一对话格式：将 "" 转为「」
+    let c=0;
+    txt=txt.replace(/\u201c/g,'「');txt=txt.replace(/\u201d/g,'」');
+    c+=(txt.match(/"/g)||[]).length;
+    txt=txt.replace(/"/g,'」');txt=txt.replace(/"/g,'「');
+    fixed+=Math.floor(c/2);
+    // 整理「」格式
+    txt=txt.replace(/「\s*/g,'「');
+    txt=txt.replace(/\s*」/g,'」');
+  }
+  if(type==='normalize'){
+    // 去除多余空行
+    txt=txt.replace(/\n{3,}/g,'\n\n');
+  }
+
+  ta.value=txt;
+  edCount();
+  edClearHighlight();
+  if(fixed>0)toast('✓ 已修复 '+fixed+' 处');else toast('无需修复');
+}
+
+// --- 查找替换 ---
+let _edHighlight=true;
+let _edMatches=[];
+let _edMatchIdx=-1;
+
+function edFindNext(){
+  const ta=document.getElementById('edTextarea');
+  const needle=document.getElementById('edFindInput').value;
+  if(!needle){toast('请输入查找内容');return;}
+  const haystack=ta.value;
+  const countEl=document.getElementById('edFindCount');
+  if(_edMatches.length===0||_edMatches[0]!==needle){
+    _edMatches=needle?haystack.split(needle):[];
+    _edMatchIdx=0;
+  }
+  if(_edMatches.length<=1){countEl.textContent='无匹配';return;}
+  _edMatchIdx=(_edMatchIdx+1)%_edMatches.length;
+  // compute actual position
+  const pos=haystack.indexOf(needle,_edMatchIdx>0?haystack.indexOf(_edMatches.slice(0,_edMatchIdx+1).join(needle)):0);
+  if(pos<0){
+    countEl.textContent='无匹配';
+    return;
+  }
+  ta.focus();
+  ta.setSelectionRange(pos,pos+needle.length);
+  // scroll into view
+  const lineHeight=parseInt(getComputedStyle(ta).lineHeight);
+  const lines=haystack.substring(0,pos).split('\n').length;
+  ta.scrollTop=(lines-3)*lineHeight;
+  _edMatchIdx++;
+  countEl.textContent='第 '+_edMatchIdx+'/'+(_edMatches.length)+' 处';
+}
+function edFindPrev(){
+  const ta=document.getElementById('edTextarea');
+  const needle=document.getElementById('edFindInput').value;
+  if(!needle){toast('请输入查找内容');return;}
+  const haystack=ta.value;
+  const pos=haystack.lastIndexOf(needle,ta.selectionStart-1);
+  if(pos<0){document.getElementById('edFindCount').textContent='已到开头';return;}
+  ta.focus();
+  ta.setSelectionRange(pos,pos+needle.length);
+  const lineHeight=parseInt(getComputedStyle(ta).lineHeight);
+  const lines=haystack.substring(0,pos).split('\n').length;
+  ta.scrollTop=(lines-3)*lineHeight;
+  document.getElementById('edFindCount').textContent='第 '+_edMatchIdx+'/'+(_edMatches.length)+' 处';
+}
+function edReplace(){
+  const ta=document.getElementById('edTextarea');
+  const needle=document.getElementById('edFindInput').value;
+  const repl=document.getElementById('edReplaceInput').value;
+  if(!needle){toast('请输入查找内容');return;}
+  if(ta.selectionStart===ta.selectionEnd){toast('请先查找到要替换的词');return;}
+  const sel=ta.value.substring(ta.selectionStart,ta.selectionEnd);
+  if(sel!==needle){toast('选中内容与查找词不符');return;}
+  ta.value=ta.value.substring(0,ta.selectionStart)+repl+ta.value.substring(ta.selectionEnd);
+  edCount();
+}
+function edReplaceAll(){
+  const ta=document.getElementById('edTextarea');
+  const needle=document.getElementById('edFindInput').value;
+  const repl=document.getElementById('edReplaceInput').value;
+  if(!needle){toast('请输入查找内容');return;}
+  const c=ta.value.split(needle).length-1;
+  ta.value=ta.value.split(needle).join(repl);
+  edCount();
+  toast('✓ 已替换 '+c+' 处');
+}
+
+// --- 导出 ---
+function edCopy(){
+  const txt=document.getElementById('edTextarea').value;
+  if(!txt.trim()){toast('无内容');return;}
+  if(navigator.clipboard)navigator.clipboard.writeText(txt).then(()=>toast('\u2705 已复制'));
+  else{const t=document.createElement('textarea');t.value=txt;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);toast('\u2705 已复制');}
+}
+function edCopyMd(){
+  const txt=document.getElementById('edTextarea').value;
+  if(!txt.trim()){toast('无内容');return;}
+  const md='# 文稿\n\n'+txt.split('\n').map(l=>'| '+l+' |').join('\n');
+  if(navigator.clipboard)navigator.clipboard.writeText(md).then(()=>toast('\u2705 Markdown 表格已复制'));
+  else toast('复制失败');
+}
+function edDownload(){
+  const txt=document.getElementById('edTextarea').value;
+  if(!txt.trim()){toast('无内容');return;}
+  const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='文稿_'+new Date().toISOString().slice(0,10)+'.txt';
+  a.click();
+  toast('\u2705 已下载');
+}
+
+
 // 启动
 CLOUD=loadCloudCfg();
 document.getElementById('userIdDisplay').textContent=getUserId();
