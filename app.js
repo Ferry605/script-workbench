@@ -150,6 +150,7 @@ document.querySelectorAll('.tab-item').forEach(t=>t.classList.remove('active'));
 document.querySelector('.tab-item[data-page="'+name+'"]').classList.add('active');
 if(name==='list')renderList();
 if(name==='gen')renderGenUI();
+if(name==='cmd')renderCmdUI();
 }
 function esc(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
@@ -619,6 +620,147 @@ if(!t){toast('暂无内容');return;}
 if(navigator.share){navigator.share({title:'我的剧本提示词',text:t}).catch(()=>{});}
 else{copyGen();}
 }
+
+
+// ===== 命令工坊：六个 AI 指令模板（糖心蛋交接需求） =====
+let currentCmd='tone';
+const TONES=['正式','非正式','专业','友好','权威','激励性'];
+const CMDS={
+tone:{label:'cmdTone',fields:['text','audience','tone']},
+detail:{label:'cmdDetail',fields:['text']},
+trim:{label:'cmdTrim',fields:['text']},
+expand:{label:'cmdExpand',fields:['text','words']},
+imitate:{label:'cmdImitate',fields:['text','theme']},
+wording:{label:'cmdWording',fields:['text']},
+humanize:{label:'cmdHumanize',fields:['text']},
+polish:{label:'cmdPolish',fields:['text']},
+coherent:{label:'cmdCoherent',fields:['text']},
+reorg:{label:'cmdReorg',fields:['text']}
+};
+function renderCmdUI(){
+document.getElementById('cmdChips').innerHTML=Object.keys(CMDS).map(k=>'<span class="chip '+(currentCmd===k?'active':'')+'" onclick="pickCmd(\''+k+'\')">'+t(CMDS[k].label)+'</span>').join('');
+const f=CMDS[currentCmd].fields;
+let html='';
+if(f.indexOf('text')>=0)html+='<label>'+t('cmdText')+'</label><textarea id="cText" rows="7" placeholder="'+t('cmdTextPh')+'"></textarea>';
+if(f.indexOf('audience')>=0)html+='<label>'+t('cmdAudience')+'</label><input id="cAudience" placeholder="'+t('cmdAudiencePh')+'" />';
+if(f.indexOf('tone')>=0)html+='<label>'+t('cmdToneSel')+'</label><div id="toneChips">'+TONES.map(x=>'<span class="chip" data-tone="'+x+'" onclick="toggleTone(\''+x+'\')">'+x+'</span>').join('')+'</div>';
+if(f.indexOf('theme')>=0)html+='<label>'+t('cmdTheme')+'</label><input id="cTheme" placeholder="'+t('cmdThemePh')+'" />';
+if(f.indexOf('words')>=0)html+='<label>'+t('cmdWords')+'</label><input id="cWords" inputmode="numeric" placeholder="'+t('cmdWordsPh')+'" />';
+document.getElementById('cmdFormWrap').innerHTML=html;
+document.getElementById('cmdOutCard').style.display='none';
+}
+function pickCmd(k){currentCmd=k;_tones=[];renderCmdUI();}
+let _tones=[];
+function toggleTone(x){
+const i=_tones.indexOf(x);
+if(i>=0)_tones.splice(i,1);else _tones.push(x);
+document.querySelectorAll('#toneChips .chip').forEach(el=>el.classList.toggle('active',_tones.indexOf(el.dataset.tone)>=0));
+}
+function cmdImport(){
+const a=document.getElementById('aOutput'),g=document.getElementById('gOutput');
+const txt=((a&&a.style.display!=='none'&&a.textContent.trim())?a.textContent:g.textContent).trim();
+if(!txt){toast(t('toastEmpty'));return;}
+const el=document.getElementById('cText');if(el)el.value=txt;
+toast('✓ 已导入');
+}
+function buildCmd(){
+const txt=(document.getElementById('cText')||{value:''}).value.trim();
+if(!txt){toast(t('toastEmpty'));return;}
+let p='';
+if(currentCmd==='tone'){
+if(!_tones.length){toast(t('toastPickTone'));return;}
+p='请调整以下文本的语气，使其适合「'+((document.getElementById('cAudience')||{value:''}).value.trim()||'一般读者')+'」。\n'
++'要求：\n'
++'· 将语气调整为「'+_tones.join('、')+'」\n'
++'· 考虑目标受众的知识水平和期望，据此调整专业术语的使用密度\n'
++'· 确保语言符合预期的社交和文化环境\n'
++'· 调整语调以反映适当的情感基调\n'
++'· 保留原文的核心信息和意图\n\n'
++'【原文】\n'+txt;
+}else if(currentCmd==='detail'){
+p='请为以下文本增加更多具体细节和说明性内容：\n'
++'· 添加相关例子、案例或场景\n'
++'· 提供更具体的数据、统计或证据\n'
++'· 展开关键概念的解释\n'
++'· 补充背景信息或上下文\n'
++'· 用生动的描述替代抽象的陈述\n'
++'· 确保新增内容支持而非偏离原文主题\n\n'
++'【原文】\n'+txt;
+}else if(currentCmd==='trim'){
+p='请在不改变原文意思的基础上，对以下文章进行精简：\n'
++'· 围绕文章主题，删去与主题不相关的内容\n'
++'· 确保与原文结构逻辑一致，言简意赅\n\n'
++'【原文】\n'+txt;
+}else if(currentCmd==='expand'){
+const w=parseInt((document.getElementById('cWords')||{value:''}).value,10);
+p='请在不改变原文意思的基础上，对以下文章进行扩写。要求如下：\n'
++'· 围绕文章主题，提供更丰富的信息和观点\n'
++'· 引入相关案例或数据支持文中论点，增强说服力\n'
++'· 结构清晰、逻辑连贯，易于读者理解\n'
++(w?'· 目标篇幅约 '+w+' 字\n':'')
++'\n【原文】\n'+txt;
+}else if(currentCmd==='imitate'){
+const th=(document.getElementById('cTheme')||{value:''}).value.trim();
+if(!th){toast(t('toastNeedTheme'));return;}
+p='请根据以下要求仿写文章。\n'
++'· 仿写样本：见下方【样本】\n'
++'· 仿写主题：'+th+'\n'
++'要求如下：\n'
++'· 仔细阅读并分析原文的风格、结构和语言特征，归纳要点，与我达成共识\n'
++'· 达成共识后，在原文的基础上重新仿写一篇文章，以「'+th+'」为主题\n'
++'· 积极运用原文的风格、结构和语言特征\n\n'
++'【样本】\n'+txt;
+}else if(currentCmd==='humanize'){
+p='请帮我重写以下文本，使其更自然、更像人类书写的内容：\n'
++'· 减少过于完美的句式结构\n'
++'· 添加适当的不规则表达\n'
++'· 使用更具个性化的语言\n'
++'· 偶尔使用口语化表达\n'
++'· 避免过于机械化的段落结构\n'
++'· 保留原文的核心信息和意图\n\n'
++'【原文】\n'+txt;
+}else if(currentCmd==='polish'){
+p='请对以下文本进行润色，使其更具表现力和吸引力：\n'
++'· 改进用词，使用更精准、生动的词汇\n'
++'· 调整句式，使表达更流畅自然\n'
++'· 增强语言的韵律感\n'
++'· 确保语言风格一致且符合场合\n'
++'· 修正任何语法或拼写错误\n'
++'· 保留原文的核心信息和意图\n\n'
++'【原文】\n'+txt;
+}else if(currentCmd==='coherent'){
+p='请重写以下文本，确保主题连贯一致：\n'
++'· 检查并强化中心思想贯穿全文\n'
++'· 确保每个段落都服务于主题\n'
++'· 增强段落之间的过渡和连接\n'
++'· 删除偏离主题的内容\n'
++'· 调整结构以形成清晰的逻辑发展\n'
++'· 保持论点、论据和结论之间的连贯性\n\n'
++'【原文】\n'+txt;
+}else if(currentCmd==='reorg'){
+p='请重新组织以下文本，使其更清晰、更易于理解：\n'
++'· 简化复杂的句子结构\n'
++'· 将长段落分解为更短、更聚焦的单元\n'
++'· 去除模糊或歧义表达\n'
++'· 使用明确的小标题划分内容（如适用）\n'
++'· 提高信息的层次性和条理性\n'
++'· 确保每个段落只包含一个中心思想\n\n'
++'【原文】\n'+txt;
+}else{
+p='请仔细阅读以下文章，改善文章中的用词，使文字描述更加准确、清晰和生动。\n\n【原文】\n'+txt;
+}
+document.getElementById('cmdOutCard').style.display='block';
+document.getElementById('cmdOutput').textContent=p;
+toast(t('toastCmdOk'));
+}
+function copyCmd(){const e=document.getElementById('cmdOutput').textContent;
+if(!e.trim()){toast(t('toastEmpty'));return;}
+if(navigator.clipboard){navigator.clipboard.writeText(e).then(()=>toast(t('toastCopied')));}
+else{const ta=document.createElement('textarea');ta.value=e;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast(t('toastCopied'));}}
+function shareCmd(){const e=document.getElementById('cmdOutput').textContent;
+if(!e.trim()){toast(t('toastEmpty'));return;}
+if(navigator.share){navigator.share({title:'剧本工作台 · 命令提示词',text:e}).catch(()=>{});}
+else{copyCmd();}}
 
 
 // 启动

@@ -1,4 +1,4 @@
-// 风格库：50 个人格化视角（不再是抽象的导演/作者梗），按文体打标
+// 风格库：人格化视角（不再是抽象的导演/作者梗），按文体打标；后续更新持续扩充第二批及以后
 // 骰子会根据当前择定的文体，从适用该文体的视角里随机抽取
 const STYLE_POOL=[
 {n:'多年后的自己回望',t:['short','film','series','scene','story','zuowen','micro']},
@@ -50,7 +50,71 @@ const STYLE_POOL=[
 {n:'镜头诗的留白',t:['short','film','scene','ad']},
 {n:'广告文案的温度',t:['ad','vlog','micro']},
 {n:'说明书里的深情',t:['ad','micro','turtle']},
-{n:'讲给大人听的童话',t:['micro','zuowen','ad','story']}
+{n:'讲给大人听的童话',t:['micro','zuowen','ad','story']},
+// ===== 第二批：更多方向（每次更新链接都会扩充） =====
+// 校园·成长
+{n:'毕业典礼上的致辞',t:['zuowen','story','scene','short']},
+{n:'晚自习窗边的走神',t:['zuowen','story','micro','short']},
+{n:'班主任的家访路',t:['story','scene','series','zuowen']},
+{n:'课桌里传的纸条',t:['micro','short','story','scene']},
+{n:'运动会广播稿的热血',t:['zuowen','short','ad','story']},
+// 职场·谋生
+{n:'会计月底对账的细密',t:['story','scene','series','micro']},
+{n:'销售业绩单背后的疲惫',t:['story','scene','series']},
+{n:'值班室里的泡面时间',t:['scene','short','story','micro']},
+{n:'面试官的三分钟观察',t:['short','scene','micro','series']},
+{n:'创业者凌晨的写字楼',t:['story','film','series','scene']},
+// 乡村·土地
+{n:'麦收时节的场院',t:['story','film','series','scene']},
+{n:'赶集路上的吆喝',t:['scene','series','story','ad']},
+{n:'老井台边的闲坐',t:['story','scene','zuowen','series']},
+{n:'山货进城的一路',t:['story','vlog','scene','ad']},
+{n:'祠堂修谱的郑重',t:['story','zuowen','series','film']},
+// 幽默·轻快
+{n:'相亲桌上的错位对话',t:['micro','scene','short','series']},
+{n:'家长群里的考古现场',t:['micro','vlog','series','ad']},
+{n:'广场舞C位的自信',t:['vlog','micro','scene','ad']},
+{n:'宠物拆家后的庭审',t:['vlog','micro','ad','short']},
+{n:'年会上忘词的节目',t:['scene','micro','series','short']},
+// 想象·科幻
+{n:'时间旅行者的留言条',t:['micro','short','story','film']},
+{n:'AI学会撒谎的第一天',t:['film','series','short','jbs']},
+{n:'末班地铁开往未来',t:['short','film','micro','story']},
+{n:'外星人观察员的报告',t:['micro','zuowen','short','jbs']},
+{n:'记忆可以备份之后',t:['film','series','story','short']},
+// 历史·厚重
+{n:'老物件背后的年代',t:['story','zuowen','film','series']},
+{n:'家书里的战火年代',t:['zuowen','story','film','scene']},
+{n:'老照片修复师的发现',t:['story','film','series','micro']},
+{n:'口述历史的录音带',t:['zuowen','series','film','story']},
+{n:'古城墙下的低语',t:['story','film','zuowen','scene']},
+// 美食·烟火
+{n:'夜市摊前的排队人',t:['scene','vlog','series','ad']},
+{n:'外婆菜谱的传抄',t:['zuowen','story','micro','vlog']},
+{n:'早餐铺开张半小时',t:['scene','series','vlog','story']},
+{n:'深夜食堂的常客',t:['scene','series','story','short']},
+{n:'一桌年夜饭的筹备',t:['story','scene','series','zuowen']},
+// 旅行·在路上
+{n:'绿皮车过道上的闲聊',t:['story','vlog','scene','series']},
+{n:'青旅留言墙的阅读',t:['micro','story','vlog','zuowen']},
+{n:'自驾抛锚的 roadside',t:['vlog','story','scene','micro']},
+{n:'导游喇叭之外的静',t:['story','scene','vlog','zuowen']},
+{n:'边境小站的清晨',t:['film','story','scene','series']},
+// 运动·身体
+{n:'马拉松三十公里处',t:['story','scene','vlog','ad']},
+{n:'球馆末场灯灭前',t:['short','scene','story','series']},
+{n:'康复科里的重新学步',t:['story','scene','series','zuowen']},
+{n:'泳道里的呼吸节奏',t:['micro','short','story','ad']},
+// 动物·自然
+{n:'老狗等待的一下午',t:['micro','story','scene','short']},
+{n:'阳台种菜的四季',t:['zuowen','vlog','micro','story']},
+{n:'候鸟过境的那一周',t:['zuowen','story','film','vlog']},
+{n:'暴雨前蚂蚁的搬家线',t:['micro','zuowen','short','story']},
+// 手艺·匠心
+{n:'木匠刨花里的年轮',t:['story','zuowen','scene','series']},
+{n:'裁缝铺改一条旧裤',t:['scene','story','micro','series']},
+{n:'修钢笔的老主顾',t:['story','micro','scene','zuowen']},
+{n:'理发店镜前的三十年',t:['story','scene','series','film']}
 ];
 // 按文体索引
 const STYLES_BY_TYPE=(function(){
