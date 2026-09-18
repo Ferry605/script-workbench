@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" data-i18n="appName">
+<meta name="mobile-web-web-app-capable" content="yes">
+<meta name="theme-color" content="#3a2a1a">
+<title data-i18n="appName">剧本工作台</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700&family=ZCOOL+XiaoWei&family=Noto+Serif+JP:wght@400;500;600&display=swap');
+
+:root{
+  --paper:#f1e6cf;
+  --paper-dark:#e5d5b3;
+  --ink:#2b2117;
+  --ink-light:#5c4a36;
+  --ink-mute:#8a7a64;
+  --vermilion:#a82a2a;
+  --border:#a98e69;
+  --border-light:#c8b189;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:"Noto Serif SC","Noto Serif JP","Songti SC","SimSun","STSong",serif;
+  color:var(--ink);
+  background:#ece2c9;
+  background-image:
+    radial-gradient(ellipse at 20% 10%,rgba(168,42,42,.04),transparent 40%),
+    radial-gradient(ellipse at 80% 90%,rgba(43,33,23,.06),transparent 50%),
+    repeating-linear-gradient(0deg,rgba(168,142,105,.03) 0 1px,transparent 1px 4px),
+    repeating-linear-gradient(90deg,rgba(168,142,105,.03) 0 1px,transparent 1px 4px);
+  min-height:100vh;min-height:100dvh;
+  padding-bottom:calc(80px + env(safe-area-inset-bottom));
+  line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.3  0 0 0 0 0.25  0 0 0 0 0.15  0 0 0 0.08 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  opacity:.5;
+}
+
+.container{max-width:800px;margin:0 auto;padding:18px;position:relative;z-index:1}
+
+/* 顶栏 */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:rgba(241,230,207,.92);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  padding:12px 18px;
+  padding-top:calc(12px + env(safe-area-inset-top));
+  border-bottom:1px solid var(--border-light);
+  display:flex;justify-content:space-between;align-items:center;
+  gap:10px;
+}
+.topbar h1{
+  font-family:"ZCOOL XiaoWei","Noto Serif SC",serif;
+  font-size:20px;font-weight:600;letter-spacing:2px;
+  color:var(--ink);
+  flex:1;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.topbar h1 .seal{
+  display:inline-block;background:var(--vermilion);color:#f1e6cf;
+  font-size:11px;padding:3px 7px;margin-left:8px;
+  border-radius:3px;font-weight:700;letter-spacing:1px;
+  box-shadow:0 0 0 1px rgba(168,42,42,.4);
+}
+.lang-switch{
+  display:flex;gap:2px;
+  background:rgba(255,255,255,.4);
+  border:1px solid var(--border-light);
+  padding:2px;
+  border-radius:2px;
+}
+.lang-switch button{
+  background:transparent;border:none;
+  font-family:inherit;font-size:11px;
+  padding:4px 8px;cursor:pointer;color:var(--ink-light);
+  letter-spacing:0;border-radius:2px;
+}
+.lang-switch button.active{
+  background:var(--ink);color:var(--paper);
+}
+.user-tag{
+  font-size:12px;color:var(--ink-light);
+  background:rgba(255,255,255,.4);
+  padding:5px 12px;border-radius:0;
+  border:1px solid var(--border-light);
+  display:flex;align-items:center;gap:6px;
+}
+.user-dot{width:6px;height:6px;border-radius:50%;background:var(--ink-mute)}
+.user-dot.local{background:#b8853a}
+.user-dot.cloud{background:var(--vermilion)}
+
+/* 底栏 */
+.tabbar{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
+  background:rgba(241,230,207,.95);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-top:1px solid var(--border-light);
+  padding-bottom:env(safe-area-inset-bottom);
+  display:flex;
+}
+.tab-item{
+  flex:1;padding:10px 4px;text-align:center;font-size:11px;
+  color:var(--ink-mute);cursor:pointer;border:none;background:0 0;
+  font-family:inherit;transition:all .2s;
+}
+.tab-item .icon{font-size:20px;display:block;margin-bottom:2px;opacity:.7}
+.tab-item.active{color:var(--vermilion)}
+.tab-item.active .icon{opacity:1}
+
+.card{
+  background:rgba(255,255,255,.55);
+  border:1px solid var(--border-light);
+  border-radius:2px;
+  padding:20px;margin-bottom:16px;
+  position:relative;
+  box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 2px 8px rgba(43,33,23,.04);
+}
+.card::before{
+  content:"";position:absolute;top:6px;left:6px;right:6px;bottom:6px;
+  border:1px solid rgba(168,142,105,.3);
+  pointer-events:none;
+}
+.card-title{
+  font-size:15px;font-weight:600;
+  color:var(--ink);
+  margin-bottom:14px;
+  padding-bottom:10px;
+  border-bottom:1px dashed var(--border-light);
+  display:flex;justify-content:space-between;align-items:center;
+  gap:8px;
+}
+.card-title::before{
+  content:"";display:inline-block;width:3px;height:14px;
+  background:var(--vermilion);margin-right:8px;
+  vertical-align:middle;
+  flex-shrink:0;
+}
+.card-title .meta{font-size:13px;font-weight:400;color:var(--ink-mute)}
+
+.btn{
+  padding:9px 18px;border:none;border-radius:2px;
+  background:var(--ink);color:var(--paper);
+  font-size:13px;font-weight:500;letter-spacing:1px;
+  cursor:pointer;transition:all .15s;
+  font-family:inherit;
+  border:1px solid var(--ink);
+}
+.btn:active{transform:translateY(1px);box-shadow:none}
+.btn.full{width:100%;padding:13px;font-size:14px}
+.btn.small{padding:5px 12px;font-size:11px}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--border)}
+.btn.ghost:active{background:var(--paper-dark)}
+.btn.danger{background:var(--vermilion);color:var(--paper);border-color:var(--vermilion)}
+.btn.cloud{background:#3a4d3a;color:var(--paper);border-color:#3a4d3a}
+
+label{
+  display:block;font-size:12px;color:var(--ink-light);
+  margin:14px 0 5px;letter-spacing:1px;
+}
+label::before{content:"▸ ";color:var(--vermilion);font-size:10px}
+input,textarea,select{
+  width:100%;
+  background:rgba(255,255,255,.5);
+  border:1px solid var(--border-light);
+  border-radius:2px;
+  padding:10px 12px;
+  color:var(--ink);font-size:14px;
+  font-family:inherit;outline:0;
+  transition:border-color .15s;
+}
+input:focus,textarea:focus,select:focus{border-color:var(--vermilion);background:rgba(255,255,255,.7)}
+textarea{resize:vertical;min-height:80px;line-height:1.7}
+select option{background:var(--paper);color:var(--ink)}
+
+.item-list{display:flex;flex-direction:column;gap:10px}
+.item{
+  background:rgba(255,255,255,.4);
+  border:1px solid var(--border-light);
+  border-left:3px solid var(--ink);
+  border-radius:2px;
+  padding:14px;
+  cursor:pointer;transition:all .15s;
+  display:flex;justify-content:space-between;align-items:center;
+  position:relative;
+}
+.item:active{background:rgba(168,42,42,.04);border-left-color:var(--vermilion)}
+.item-main{flex:1;min-width:0}
+.item-title{
+  font-weight:600;font-size:15px;margin-bottom:5px;
+  color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.item-meta{font-size:12px;color:var(--ink-mute);letter-spacing:.5px}
+.item-actions{display:flex;gap:6px;margin-left:10px}
+
+.empty-list{
+  text-align:center;padding:40px 20px;
+  background:rgba(168,142,105,.08);
+  border:1px dashed var(--border-light);
+  color:var(--ink-mute);font-size:13px;
+  border-radius:2px;
+  letter-spacing:2px;
+}
+.empty-list::before{content:"— ";color:var(--border)}
+.empty-list::after{content:" —"}
+
+.modal-bg{
+  position:fixed;inset:0;z-index:100;
+  background:rgba(43,33,23,.55);
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:none;align-items:flex-end;justify-content:center;
+}
+.modal-bg.show{display:flex}
+.modal{
+  background:var(--paper);
+  border-top:3px double var(--ink);
+  border-radius:0;
+  padding:24px;
+  padding-bottom:calc(24px + env(safe-area-inset-bottom));
+  width:100%;max-width:600px;
+  max-height:85vh;overflow-y:auto;
+  animation:slideUp .25s ease;
+  position:relative;
+  box-shadow:0 -4px 20px rgba(43,33,23,.15);
+}
+.modal::after{
+  content:"";position:absolute;bottom:0;left:0;right:0;height:4px;
+  background:repeating-linear-gradient(90deg,var(--ink) 0 8px,transparent 8px 14px);
+}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal h3{
+  font-size:17px;font-weight:600;color:var(--ink);
+  margin-bottom:16px;padding-bottom:10px;
+  border-bottom:1px solid var(--border-light);
+  letter-spacing:2px;
+}
+.modal .row{display:flex;gap:8px;margin-top:8px}
+.modal .row .btn{flex:1}
+
+.chip{
+  display:inline-block;
+  padding:6px 14px;margin:4px 6px 4px 0;
+  background:rgba(255,255,255,.5);
+  border:1px solid var(--border);
+  border-radius:2px;
+  font-size:12px;color:var(--ink-light);
+  cursor:pointer;
+  letter-spacing:1px;
+  transition:all .15s;
+}
+.chip:active{background:var(--paper-dark)}
+.chip.active{
+  background:var(--ink);
+  border-color:var(--ink);
+  color:var(--paper);
+}
+
+.toast{
+  position:fixed;top:80px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:var(--paper);
+  padding:9px 22px;border-radius:2px;
+  font-size:13px;letter-spacing:1px;
+  z-index:200;opacity:0;
+  transition:opacity .3s;
+  pointer-events:none;max-width:90%;
+  border:1px solid var(--ink);
+}
+.toast.show{opacity:1}
+
+.output{
+  background:rgba(255,255,255,.5);
+  border:1px solid var(--border-light);
+  border-radius:2px;
+  padding:16px;
+  font-size:13px;
+  white-space:pre-wrap;line-height:1.8;
+  word-break:break-word;
+  max-height:400px;overflow-y:auto;
+  margin-top:14px;
+  color:var(--ink);
+  font-family:"Noto Serif SC","Noto Serif JP","Songti SC",serif;
+}
+
+.page{display:none;animation:fadeIn .3s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.badge{
+  display:inline-block;padding:3px 10px;
+  border-radius:2px;font-size:11px;font-weight:500;
+  letter-spacing:1px;
+  border:1px solid currentColor;
+}
+.badge.draft{color:var(--ink-mute);background:transparent}
+.badge.writing{color:#8a5a1a;background:transparent;border-color:#8a5a1a}
+.badge.done{color:var(--vermilion);background:transparent}
+
+.sync-banner{
+  background:rgba(168,42,42,.06);
+  border:1px solid var(--vermilion);
+  border-left-width:3px;
+  border-radius:2px;
+  padding:12px 16px;margin-bottom:16px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:13px;color:var(--ink);
+}
+.sync-banner button{
+  background:transparent;color:var(--ink);
+  border:1px solid var(--border);
+  padding:5px 12px;border-radius:2px;
+  font-size:11px;cursor:pointer;
+  font-family:inherit;letter-spacing:1px;
+}
+
+.code{
+  font-family:"Courier New",monospace;
+  font-size:12px;color:var(--ink);
+  background:rgba(255,255,255,.4);
+  padding:8px 10px;border-radius:2px;
+  word-break:break-all;
+  border:1px solid var(--border-light);
+}
+
+.seal-stamp{
+  position:absolute;top:14px;right:14px;
+  width:38px;height:38px;
+  background:var(--vermilion);
+  color:var(--paper);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;letter-spacing:1px;
+  border-radius:3px;
+  transform:rotate(-6deg);
+  opacity:.85;
+  box-shadow:0 0 0 1px rgba(168,42,42,.3);
+  font-family:"Noto Serif SC",serif;
+}
+.seal-stamp::before{
+  content:"";position:absolute;inset:3px;
+  border:1px solid rgba(241,230,207,.6);
+}
+
+/* 日语/英语样式微调 */
+body.lang-en,.lang-en{font-family:"Georgia","Times New Roman",serif;letter-spacing:0}
+body.lang-ja{font-family:"Noto Serif JP","Noto Serif SC","Yu Mincho",serif;letter-spacing:1px}
+body.lang-ja .topbar h1{letter-spacing:3px}
+body.lang-en .topbar h1{letter-spacing:1px}
+</style>
+
+<style>
+.input-dice-row{position:relative;display:flex;gap:8px;align-items:center}
+#gRef.dice-roll{animation:diceRoll 0.45s ease}
+@keyframes diceRoll{
+  0%{transform:rotate(0)}
+  20%{transform:rotate(-8deg) scale(1.03)}
+  60%{transform:rotate(8deg) scale(1.03)}
+  100%{transform:rotate(0)}
+}
+.btn-dice{font-size:16px!important;padding:8px 12px!important;transition:transform 0.2s}
+.btn-dice:hover{transform:rotate(15deg) scale(1.1)}
+.btn-dice:active{transform:rotate(-30deg) scale(0.95)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+<h1><span data-i18n="appName">剧本工作台</span><span class="seal" data-i18n="langShort">古风</span></h1>
+<div class="lang-switch" id="langSwitch">
+  <button data-lang="zh">中</button>
+  <button data-lang="en">EN</button>
+  <button data-lang="ja">日</button>
+</div>
+<div class="user-tag">
+<span class="user-dot local" id="modeDot"></span>
+<span id="userTag" data-i18n="localOnly">本地</span>
+</div>
+</div>
+
+<div class="container">
+
+<div id="page-list" class="page active">
+
+<div class="sync-banner" id="syncBanner" style="display:none">
+<span data-i18n="syncOk">☁ 已连接云端</span>
+<button onclick="switchToLocal()" data-i18n="localOnly">转本地</button>
+</div>
+
+<div class="card" style="position:relative">
+<div class="seal-stamp" data-i18n="sealChar">剧</div>
+<div class="card-title">
+<span data-i18n="myScripts">吾之作品</span>
+<span class="meta"><span data-i18n="total">共</span> <span id="scriptCount">0</span> <span data-i18n="piece">篇</span></span>
+</div>
+<div id="scriptList" class="item-list"></div>
+<div style="margin-top:14px">
+<button class="btn full" onclick="newScript()" data-i18n="newScript">＋ 落笔新作</button>
+</div>
+</div>
+
+<div class="card">
+<div class="card-title" data-i18n="cloud">云端存储</div>
+<div id="cloudStatus" style="font-size:13px;color:var(--ink-light);line-height:1.8" data-i18n="cloudOff">未启用</div>
+<div style="height:10px"></div>
+<button class="btn full cloud" onclick="setupCloud()" data-i18n="cloudCfg">☁ 配置云端</button>
+<div style="height:8px"></div>
+<button class="btn ghost full" onclick="exportData()" data-i18n="exportBk">📜 导出备份</button>
+<div style="height:8px"></div>
+<button class="btn ghost full" onclick="importData()" data-i18n="importBk">📥 导入备份</button>
+<div style="height:8px"></div>
+<button class="btn ghost full" onclick="resetAll()" style="color:var(--vermilion);border-color:var(--vermilion)" data-i18n="clear">🗑 清空</button>
+</div>
+
+<div class="card">
+<div class="card-title" data-i18n="userId">机号</div>
+<div class="code" id="userIdDisplay"></div>
+<div style="font-size:12px;color:var(--ink-mute);margin-top:8px;letter-spacing:1px" data-i18n="userIdHint">每机一号。云端启用后可于诸设备通览。</div>
+</div>
+</div>
+
+<div id="page-detail" class="page">
+<button class="btn ghost small" onclick="goList()" style="margin-bottom:14px" data-i18n="backList">← 返卷</button>
+
+<div class="card">
+<div class="card-title">
+<span id="detailTitle" data-i18n="untitled">无名篇</span>
+<span id="detailStatus" class="badge draft" data-i18n="draft">草稿</span>
+</div>
+
+<label data-i18n="scriptName">篇名</label>
+<input id="dTitle" data-i18n-ph="scriptNamePh" placeholder="题于首" />
+
+<label data-i18n="logline">题要（一句话）</label>
+<textarea id="dLogline" data-i18n-ph="loglinePh" placeholder="用一句话讲清此篇之意"></textarea>
+
+<label data-i18n="genre">题材</label>
+<div id="genreChips"></div>
+<input id="dGenre" data-i18n-ph="genreCustom" placeholder="可自定义，如：科幻/悬疑" style="margin-top:8px" />
+
+<label data-i18n="length">时长</label>
+<input id="dLength" data-i18n-ph="lengthPh" placeholder="如：九十分钟 / 十二集" />
+
+<label data-i18n="status">状</label>
+<select id="dStatus">
+  <option value="draft" data-i18n="draftOpt">草稿</option>
+  <option value="writing" data-i18n="writingOpt">撰文中</option>
+  <option value="done" data-i18n="doneOpt">已成</option>
+</select>
+
+<button class="btn full" style="margin-top:16px" onclick="saveScript()" data-i18n="saveScript">💾 存卷</button>
+<div style="height:8px"></div>
+<button class="btn full" style="background:transparent;color:var(--vermilion);border:1px solid var(--vermilion)" onclick="deleteScript()" data-i18n="burnScript">🗑 焚稿</button>
+</div>
+
+<div class="card">
+<div class="card-title">
+<span data-i18n="chars">人物列传</span>
+<span class="meta"><span data-i18n="total">共</span> <span id="charCount">0</span> <span data-i18n="person">人</span></span>
+</div>
+<div id="charList" class="item-list"></div>
+<div style="margin-top:14px">
+<button class="btn ghost full" onclick="addCharacter()" data-i18n="newChar">＋ 增人</button>
+</div>
+</div>
+
+<div class="card">
+<div class="card-title">
+<span data-i18n="scenes">场景分镜</span>
+<span class="meta"><span data-i18n="total">共</span> <span id="sceneCount">0</span> <span data-i18n="stage">场</span></span>
+</div>
+<div id="sceneList" class="item-list"></div>
+<div style="margin-top:14px">
+<button class="btn ghost full" onclick="addScene()" data-i18n="newScene">＋ 添场</button>
+</div>
+</div>
+
+<div class="card">
+<div class="card-title" data-i18n="deriveFromScript">衍生内容</div>
+<div style="font-size:12px;color:var(--ink-mute);margin-bottom:12px;line-height:1.7;letter-spacing:.5px" data-i18n="deriveHint">基于此篇的题材/人物，自动衍生故事/剧本片段。</div>
+<button class="btn full" onclick="openGenerator()" data-i18n="deriveBtn">⚒ 由此篇衍生</button>
+</div>
+</div>
+
+<div id="page-gen" class="page">
+<button class="btn ghost small" onclick="goList()" style="margin-bottom:14px" data-i18n="backList">← 返卷</button>
+
+<div class="card">
+<div class="card-title" data-i18n="pickType">择文体</div>
+<div id="typeChips"></div>
+</div>
+
+<div class="card">
+<div class="card-title" data-i18n="promptMaterial">提示素材</div>
+<label data-i18n="genre">题材</label><input id="gGenre" data-i18n-ph="genrePh" placeholder="科幻/悬疑/爱情..." />
+<label data-i18n="logline">题要（核心主题）</label><textarea id="gLogline" data-i18n-ph="loglinePh" placeholder="一句话故事或初始念头"></textarea>
+<label data-i18n="chars">主要人物</label><textarea id="gChars" rows="3" data-i18n-ph="charsPh" placeholder="姓名、年龄、身分、性情、隐衷"></textarea>
+<label data-i18n="length">字数/时长</label><input id="gLength" data-i18n-ph="lengthPh" placeholder="九十分钟 / 八百字 / 一轮" />
+<label data-i18n="ref">风格</label>
+<div style="display:flex;gap:8px">
+<input id="gRef" data-i18n-ph="refPh" placeholder="诺兰之节奏 + 是枝裕和之情" />
+<button class="btn ghost" style="flex-shrink:0;padding:9px 14px;font-size:15px" onclick="rollStyle()" data-i18n-title="diceTip">🎲</button>
+</div>
+
+</div>
+
+<button class="btn full" onclick="generate()" data-i18n="genBtn">✨ 衍生片段</button>
+<div style="height:8px"></div>
+<button class="btn ghost full" onclick="loadExample()" data-i18n="genExBtn">🎲 换个示例</button>
+<div style="font-size:11px;color:var(--ink-mute);margin-top:6px;text-align:center;letter-spacing:.5px" data-i18n="noRepeatHint">示例即时新造，绝不与之前重复</div>
+
+<div class="card">
+<div class="card-title" data-i18n="genTitle">范例片段</div>
+<div style="font-size:12px;color:var(--ink-mute);margin-bottom:10px;line-height:1.7;letter-spacing:.5px" data-i18n="genHint">按所选文体衍生 / 随机切换示例。可直接抄录改写。</div>
+<div id="gOutput" class="output" style="min-height:100px"></div>
+<div style="display:flex;gap:10px;margin-top:12px">
+<button class="btn" style="flex:1" onclick="copyGen()" data-i18n="copyGen">📋 抄录</button>
+<button class="btn ghost" style="flex:1" onclick="saveExample()" data-i18n="saveExBtn">💾 存示例</button>
+<button class="btn ghost" style="flex:1" onclick="shareGen()" data-i18n="shareGen">🔗 传阅</button>
+</div>
+<div style="margin-top:8px">
+<button class="btn ghost full" onclick="showSavedExamples()" data-i18n="exBookBtn">📚 示例夹</button>
+</div>
+</div>
+
+<div class="card">
+<div class="card-title" data-i18n="articleTitle">✍️ 成文工坊</div>
+<div style="font-size:12px;color:var(--ink-mute);margin-bottom:10px;line-height:1.7;letter-spacing:.5px" data-i18n="articleHint">按上方提示素材（题材/题要/人物/风格）直接成文。填入目标字数即可，如 800。</div>
+<label data-i18n="wordCount">目标字数</label>
+<div style="display:flex;gap:8px">
+<input id="aLen" type="number" inputmode="numeric" value="800" min="200" max="3000" step="100" />
+<button class="btn" style="flex-shrink:0;padding:9px 16px" onclick="genArticle()" data-i18n="articleBtn">✍️ 直接成文</button>
+</div>
+<div style="margin-top:8px">
+<span class="chip" onclick="setLen(300)">300字</span>
+<span class="chip" onclick="setLen(500)">500字</span>
+<span class="chip" onclick="setLen(800)">800字</span>
+<span class="chip" onclick="setLen(1200)">1200字</span>
+<span class="chip" onclick="setLen(2000)">2000字</span>
+</div>
+<div id="aMeta" style="font-size:12px;color:var(--ink-mute);margin-top:12px;letter-spacing:.5px"></div>
+<div id="aOutput" class="output" style="min-height:120px;display:none"></div>
+<div id="aBtns" style="display:none;gap:10px;margin-top:12px">
+<button class="btn" style="flex:1" onclick="copyArticle()" data-i18n="copyGen">📋 抄录</button>
+<button class="btn ghost" style="flex:1" onclick="improveWording()" data-i18n="improveWords">✨ 改善用词</button>
+<button class="btn ghost" style="flex:1" onclick="saveArticle()" data-i18n="saveExBtn">💾 存示例</button>
+<button class="btn ghost" style="flex:1" onclick="shareArticle()" data-i18n="shareGen">🔗 传阅</button>
+</div>
+</div>
+</div>
+
+<div id="page-cmd" class="page">
+<button class="btn ghost small" onclick="switchTab('list')" style="margin-bottom:14px" data-i18n="backList">← 返卷</button>
+
+<div class="card">
+<div class="card-title" data-i18n="cmdTitle">择命令</div>
+<div id="cmdChips"></div>
+<div style="font-size:12px;color:var(--ink-mute);margin-top:10px;line-height:1.7;letter-spacing:.5px" data-i18n="cmdHint">六个常用 AI 指令模板：填好原文与要求，一键生成规范提示词，抄录后粘贴给 ChatGPT / Claude 即可。</div>
+</div>
+
+<div class="card">
+<div class="card-title" data-i18n="cmdForm">填素材</div>
+<div id="cmdFormWrap"></div>
+<div style="margin-top:10px">
+<button class="btn ghost small" onclick="cmdImport()">📥 导入上文成文/范例</button>
+</div>
+<div style="height:12px"></div>
+<button class="btn full" onclick="buildCmd()" data-i18n="cmdBtn">⚡ 生成命令提示词</button>
+</div>
+
+<div class="card" id="cmdOutCard" style="display:none">
+<div class="card-title" data-i18n="cmdOutTitle">命令提示词</div>
+<div id="cmdOutput" class="output" style="min-height:100px"></div>
+<div style="display:flex;gap:10px;margin-top:12px">
+<button class="btn" style="flex:1" onclick="copyCmd()" data-i18n="copyGen">📋 抄录</button>
+<button class="btn ghost" style="flex:1" onclick="shareCmd()" data-i18n="shareGen">🔗 传阅</button>
+</div>
+</div>
+</div>
+
+</div>
+
+<div class="modal-bg" id="modal" onclick="if(event.target===this)closeModal()">
+<div class="modal" id="modalContent"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="tabbar">
+<button class="tab-item active" data-page="list" onclick="switchTab('list')">
+<span class="icon">📜</span><span data-i18n="tabScripts">卷帙</span>
+</button>
+<button class="tab-item" data-page="gen" onclick="switchTab('gen')">
+<span class="icon">🖋</span><span data-i18n="tabGen">衍生</span>
+</button>
+<button class="tab-item" data-page="cmd" onclick="switchTab('cmd')">
+<span class="icon">🪄</span><span data-i18n="tabCmd">命令</span>
+</button>
+</div>
+
+<script src="./examples.js?v=5"></script>
+<script src="./styles.js?v=5"></script>
+<script src="./i18n.js?v=5"></script>
+<script src="./gen.js?v=5"></script>
+<script src="./app.js?v=5"></script>
+</body>
+</html>
