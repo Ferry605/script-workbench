@@ -557,38 +557,79 @@ body.lang-en .topbar h1{letter-spacing:1px}
 </div>
 
 <div id="page-cmd" class="page">
-<button class="btn ghost small" onclick="switchTab('list')" style="margin-bottom:14px" data-i18n="backList">← 返卷</button>
+<button class="btn ghost small" onclick="switchTab('list')" style="margin-bottom:14px" data-i18n="backList">← 返回</button>
 
 <div class="card">
-<div class="card-title" data-i18n="cmdTitle">择命令</div>
-<div id="cmdChips"></div>
-<div style="font-size:12px;color:var(--ink-mute);margin-top:10px;line-height:1.7;letter-spacing:.5px" data-i18n="cmdHint">六个常用 AI 指令模板：填好原文与要求，一键生成规范提示词，抄录后粘贴给 ChatGPT / Claude 即可。</div>
+<div class="card-title" data-i18n="edTitle">文稿检查 · 编辑器</div>
+<div id="edDropzone" onclick="document.getElementById('edFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--vermilion)'" ondragleave="this.style.borderColor=''" ondrop="edHandleDrop(event)" style="border:2px dashed var(--ink-faint);border-radius:8px;padding:20px;text-align:center;cursor:pointer;color:var(--ink-mute);font-size:13px;transition:border-color .2s;line-height:1.8">
+<div style="font-size:28px;margin-bottom:6px">📂</div>
+<div data-i18n="edDropHint">拖拽文件到此处，或点击选择文件</div>
+<div style="font-size:11px;margin-top:4px" data-i18n="edDropExt">支持 .txt .srt .md .json .vtt .ass · 也可直接粘贴文字</div>
+</div>
+<input type="file" id="edFileInput" accept=".txt,.srt,.md,.json,.vtt,.ass,.text,.log" style="display:none" onchange="edHandleFile(this.files[0])">
 </div>
 
 <div class="card">
-<div class="card-title" data-i18n="cmdForm">填素材</div>
-<div id="cmdFormWrap"></div>
-<div style="margin-top:10px">
-<button class="btn ghost small" onclick="cmdImport()">📥 导入上文成文/范例</button>
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+<span class="card-title" style="margin:0" data-i18n="edText">文稿</span>
+<button class="btn ghost small" onclick="edImportGen()" style="margin-left:auto" data-i18n="edImportGen">📥 导入成文</button>
+<button class="btn ghost small" onclick="edClear()" data-i18n="edClear">🗑 清空</button>
 </div>
-<div style="height:12px"></div>
-<button class="btn full" onclick="buildCmd()" data-i18n="cmdBtn">⚡ 生成命令提示词</button>
-</div>
-
-<div class="card" id="cmdOutCard" style="display:none">
-<div class="card-title" data-i18n="cmdOutTitle">命令提示词</div>
-<div id="cmdOutput" class="output" style="min-height:100px"></div>
-<div style="display:flex;gap:10px;margin-top:12px">
-<button class="btn" style="flex:1" onclick="copyCmd()" data-i18n="copyGen">📋 抄录</button>
-<button class="btn ghost" style="flex:1" onclick="shareCmd()" data-i18n="shareGen">🔗 传阅</button>
-</div>
+<textarea id="edTextarea" rows="14" placeholder="在此粘贴或输入文字..." style="width:100%;border:1px solid var(--ink-faint);border-radius:6px;padding:10px;font-size:14px;line-height:1.7;resize:vertical;box-sizing:border-box;font-family:inherit;background:var(--paper)" oninput="edCount()"></textarea>
+<div id="edStats" style="font-size:12px;color:var(--ink-mute);margin-top:6px;display:none">
+<span id="edChars">0</span> 字 · <span id="edWords">0</span> 词 · <span id="edSents">0</span> 句
 </div>
 </div>
 
+<div class="card">
+<div class="card-title" data-i18n="edCheck">🔍 检查</div>
+<div id="edChecks" style="display:flex;flex-wrap:wrap;gap:8px">
+<button class="btn ghost small" onclick="edCheck('stage')" data-i18n="edChkStage">🎬 舞台指示</button>
+<button class="btn ghost small" onclick="edCheck('punct')" data-i18n="edChkPunct">。标点</button>
+<button class="btn ghost small" onclick="edCheck('dialogue')" data-i18n="edChkDialogue">💬 对话格式</button>
+<button class="btn ghost small" onclick="edCheck('repeat')" data-i18n="edChkRepeat">🔁 重复词</button>
+<button class="btn ghost small" onclick="edCheck('space')" data-i18n="edChkSpace">空白</button>
+<button class="btn ghost small" onclick="edCheck('all')" data-i18n="edChkAll">全检</button>
+</div>
+<div id="edCheckResult" style="display:none;margin-top:12px;padding:12px;background:var(--paper);border-radius:6px;font-size:13px;line-height:1.8;max-height:220px;overflow-y:auto"></div>
 </div>
 
-<div class="modal-bg" id="modal" onclick="if(event.target===this)closeModal()">
-<div class="modal" id="modalContent"></div>
+<div class="card">
+<div class="card-title" data-i18n="edFix">🛠 修复</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px">
+<button class="btn small" onclick="edFix('stage')" data-i18n="edFixStage">✂️ 去除舞台指示</button>
+<button class="btn small" onclick="edFix('punct')" data-i18n="edFixPunct">。统一标点</button>
+<button class="btn small" onclick="edFix('trim')" data-i18n="edFixTrim">✂️ 精简空白</button>
+<button class="btn small" onclick="edFix('dialogue')" data-i18n="edFixDialogue">💬 整理对话格式</button>
+<button class="btn small" onclick="edFix('normalize')" data-i18n="edFixNormalize">🔄 全文格式化</button>
+</div>
+</div>
+
+<div class="card">
+<div class="card-title" data-i18n="edFind">🔎 查找替换</div>
+<div style="display:flex;gap:8px;margin-bottom:8px">
+<input id="edFindInput" placeholder="查找…" style="flex:1;border:1px solid var(--ink-faint);border-radius:6px;padding:7px 10px;font-size:13px;background:var(--paper)">
+<input id="edReplaceInput" placeholder="替换为…" style="flex:1;border:1px solid var(--ink-faint);border-radius:6px;padding:7px 10px;font-size:13px;background:var(--paper)">
+</div>
+<div style="display:flex;gap:8px">
+<button class="btn ghost small" onclick="edFindPrev()" data-i18n="edFindPrev">↑ 上一个</button>
+<button class="btn ghost small" onclick="edFindNext()" data-i18n="edFindNext">↓ 下一个</button>
+<button class="btn small" onclick="edReplace()" data-i18n="edReplace">替换</button>
+<button class="btn small" onclick="edReplaceAll()" data-i18n="edReplaceAll">全部替换</button>
+<span id="edFindCount" style="font-size:12px;color:var(--ink-mute);align-self:center;margin-left:4px"></span>
+</div>
+</div>
+
+<div class="card">
+<div class="card-title" data-i18n="edExport">📤 导出</div>
+<div style="display:flex;gap:8px">
+<button class="btn" style="flex:1" onclick="edCopy()" data-i18n="edCopy">📋 复制全文</button>
+<button class="btn ghost" style="flex:1" onclick="edDownload()" data-i18n="edDownload">💾 下载 .txt</button>
+<button class="btn ghost" style="flex:1" onclick="edCopyMd()" data-i18n="edCopyMd">📄 复制 Markdown</button>
+</div>
+</div>
+
+</div>
 </div>
 
 <div class="toast" id="toast"></div>
