@@ -559,8 +559,16 @@ body.lang-en .topbar h1{letter-spacing:1px}
 <div id="page-cmd" class="page">
 <button class="btn ghost small" onclick="switchTab('list')" style="margin-bottom:14px" data-i18n="backList">← 返回</button>
 
-<div class="card">
-<div class="card-title" data-i18n="edTitle">文稿检查 · 编辑器</div>
+<div class="card" style="background:var(--vermilion-faint);border:2px solid var(--vermilion);text-align:center;padding:32px 20px">
+<div style="font-size:48px;margin-bottom:12px">📝</div>
+<div class="card-title" style="font-size:18px;margin-bottom:8px" data-i18n="edTitle">新版编辑器已上线</div>
+<div style="font-size:13px;color:var(--ink-mute);line-height:1.7;margin-bottom:16px" data-i18n="edIntro">独立全功能编辑器，支持拖放、粘贴、9项检查、8项快捷修改、查找替换、多种格式导出。</div>
+<a href="editor.html" target="_blank" class="btn" style="display:inline-block;text-decoration:none;padding:10px 24px;font-size:14px" data-i18n="edOpen">🚀 打开编辑器</a>
+<div style="font-size:11px;color:var(--ink-mute);margin-top:10px" data-i18n="edOpenHint">在新标签页打开 · editor.html</div>
+</div>
+
+<div class="card" style="margin-top:16px">
+<div class="card-title" data-i18n="edTitle">文稿检查 · 旧版编辑器</div>
 <div id="edDropzone" onclick="document.getElementById('edFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--vermilion)'" ondragleave="this.style.borderColor=''" ondrop="edHandleDrop(event)" style="border:2px dashed var(--ink-faint);border-radius:8px;padding:20px;text-align:center;cursor:pointer;color:var(--ink-mute);font-size:13px;transition:border-color .2s;line-height:1.8">
 <div style="font-size:28px;margin-bottom:6px">📂</div>
 <div data-i18n="edDropHint">拖拽文件到此处，或点击选择文件</div>
