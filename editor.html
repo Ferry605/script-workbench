@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文章 &amp; 剧本编辑器</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; }
+.header { background: #16213e; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #0f3460; flex-shrink: 0; }
+.header h1 { font-size: 15px; color: #e94560; font-weight: 700; }
+.header span { font-size: 12px; color: #888; }
+.toolbar { background: #16213e; padding: 6px 12px; display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid #0f3460; flex-shrink: 0; align-items: center; }
+.toolbar button { background: #0f3460; color: #e0e0e0; border: 1px solid #e94560; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; transition: all 0.15s; }
+.toolbar button:hover { background: #e94560; color: #fff; }
+.toolbar .sep { width: 1px; background: #333; margin: 0 4px; }
+.toolbar label { background: #0f3460; color: #e0e0e0; border: 1px solid #e94560; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.toolbar label:hover { background: #e94560; color: #fff; }
+.toolbar input[type="file"] { display: none; }
+.toolbar .status { font-size: 11px; color: #888; margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.toolbar .format-badge { background: #e94560; color: #fff; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+.drop-zone { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 8px; gap: 8px; }
+.editor-wrap { flex: 1; display: flex; border-radius: 8px; overflow: hidden; border: 2px solid #0f3460; transition: border-color 0.2s; }
+.editor-wrap.drag-over { border-color: #e94560; background: rgba(233,69,96,0.05); }
+.line-numbers { background: #0f3460; color: #555; padding: 10px 8px; text-align: right; font-family: 'Fira Code','Consolas',monospace; font-size: 13px; line-height: 1.6; min-width: 40px; overflow: hidden; user-select: none; white-space: pre; }
+textarea { flex: 1; background: #0d1b2a; color: #e0e0e0; border: none; padding: 10px; font-family: 'Fira Code','Consolas',monospace; font-size: 13px; line-height: 1.6; resize: none; outline: none; }
+.bottom-bar { background: #16213e; padding: 6px 16px; display: flex; align-items: center; gap: 16px; border-top: 1px solid #0f3460; font-size: 11px; color: #666; flex-shrink: 0; }
+.bottom-bar .info-item span { color: #e94560; font-weight: 600; }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+.modal-overlay.show { display: flex; }
+.modal { background: #1a1a2e; border: 1px solid #e94560; border-radius: 12px; padding: 24px; width: 480px; max-height: 80vh; overflow-y: auto; }
+.modal h2 { color: #e94560; font-size: 16px; margin-bottom: 16px; }
+.check-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #222; }
+.check-item .icon { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.check-item .ok { background: #1a6b3a; color: #4ade80; }
+.check-item .warn { background: #7c5a10; color: #fbbf24; }
+.check-item .error { background: #7a1a1a; color: #f87171; }
+.check-item .text { font-size: 13px; flex: 1; }
+.check-item .detail { font-size: 11px; color: #888; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fix-btn { background: #e94560; color: #fff; border: none; border-radius: 4px; padding: 3px 10px; font-size: 11px; cursor: pointer; flex-shrink: 0; }
+.fix-btn:hover { background: #ff6b8a; }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+.modal-actions button { background: #0f3460; color: #e0e0e0; border: 1px solid #e94560; border-radius: 6px; padding: 8px 20px; font-size: 13px; cursor: pointer; }
+.modal-actions button.primary { background: #e94560; color: #fff; }
+.find-bar { background: #0f3460; padding: 8px 12px; display: none; gap: 8px; align-items: center; border-top: 1px solid #0f3460; flex-shrink: 0; }
+.find-bar.show { display: flex; }
+.find-bar input { background: #0d1b2a; color: #e0e0e0; border: 1px solid #333; border-radius: 4px; padding: 5px 10px; font-size: 12px; outline: none; }
+.find-bar input:focus { border-color: #e94560; }
+.find-bar .find-info { font-size: 11px; color: #888; min-width: 60px; }
+.toast { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); background: #0f3460; color: #fff; border: 1px solid #e94560; border-radius: 8px; padding: 10px 20px; font-size: 13px; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+.shortcuts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.shortcut-item { background: #0f3460; border-radius: 6px; padding: 10px; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; }
+.shortcut-item:hover { border-color: #e94560; }
+.shortcut-item .name { font-size: 13px; color: #e94560; font-weight: 600; margin-bottom: 4px; }
+.shortcut-item .desc { font-size: 11px; color: #888; }
+.modal-actions-left { display: flex; gap: 8px; margin-top: 16px; }
+.modal-actions-left button { background: #333; color: #e0e0e0; border: 1px solid #555; border-radius: 6px; padding: 8px 20px; font-size: 13px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📝 文章 &amp; 剧本编辑器</h1>
+  <span>— 支持拖放、粘贴、格式检查、批量修改、导出</span>
+</div>
+
+<div class="toolbar">
+  <input type="file" id="fileInput" multiple accept=".txt,.srt,.md,.json,.vtt,.ass,.xml,.csv">
+  <label for="fileInput">📂 打开文件</label>
+  <button onclick="pasteFromClipboard()">📋 粘贴内容</button>
+  <div class="sep"></div>
+  <button onclick="runChecks()">🔍 格式检查</button>
+  <button onclick="showShortcuts()">⚡ 快捷修改</button>
+  <button onclick="toggleFind()" id="findToggleBtn">🔎 查找</button>
+  <div class="sep"></div>
+  <button onclick="copyText()">📤 复制全文</button>
+  <button onclick="downloadTxt()">💾 下载.txt</button>
+  <button onclick="downloadMd()">📄 下载.md</button>
+  <div class="status">
+    <span id="formatBadge" class="format-badge">TXT</span>
+    <span id="statusText">就绪</span>
+  </div>
+</div>
+
+<div class="find-bar" id="findBar">
+  <input type="text" id="findInput" placeholder="查找..." oninput="onFindInput()">
+  <button class="toolbar" style="padding:3px 8px;font-size:11px;" onclick="findPrev()">↑</button>
+  <button class="toolbar" style="padding:3px 8px;font-size:11px;" onclick="findNext()">↓</button>
+  <input type="text" id="replaceInput" placeholder="替换为..." style="width:150px;">
+  <button class="toolbar" style="padding:3px 8px;font-size:11px;" onclick="replaceOne()">替换</button>
+  <button class="toolbar" style="padding:3px 8px;font-size:11px;" onclick="replaceAll()">全部</button>
+  <span class="find-info" id="findInfo"></span>
+  <button class="toolbar" style="padding:3px 8px;font-size:11px;margin-left:auto;" onclick="toggleFind()">✕</button>
+</div>
+
+<div class="drop-zone">
+  <div class="editor-wrap" id="editorWrap" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+    <div class="line-numbers" id="lineNumbers">1</div>
+    <textarea id="editor" placeholder="👇 把文件拖到这里 / 按 Ctrl+V 粘贴 / 点「打开文件」
+
+支持格式：.txt .srt .md .json .vtt .ass .xml .csv
+
+下方「🔍 格式检查」可检查剧本/文章问题
+「⚡ 快捷修改」可批量处理文本" oninput="onEditorInput()" onscroll="syncScroll()" spellcheck="false"></textarea>
+  </div>
+</div>
+
+<div class="bottom-bar">
+  <div class="info-item">行数: <span id="lineCount">0</span></div>
+  <div class="info-item">字符: <span id="charCount">0</span></div>
+  <div class="info-item">格式: <span id="fmtText">TXT 纯文本</span></div>
+  <div class="info-item" style="margin-left:auto;">编码: UTF-8</div>
+</div>
+
+<!-- 检查结果弹窗 -->
+<div class="modal-overlay" id="checkModal">
+  <div class="modal">
+    <h2>🔍 格式检查结果</h2>
+    <div id="checkResults"></div>
+    <div class="modal-actions">
+      <button class="primary" onclick="applyAllFixes()">🚀 应用全部修复</button>
+      <button onclick="closeModal('checkModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 快捷修改弹窗 -->
+<div class="modal-overlay" id="shortcutsModal">
+  <div class="modal" style="width:520px;">
+    <h2>⚡ 快捷修改 — 点击即应用</h2>
+    <div class="shortcuts-grid">
+      <div class="shortcut-item" onclick="fixRemoveBrackets(); toast('已去除【】标签')">
+        <div class="name">去除【画面】【字幕】</div>
+        <div class="desc">删除所有【...】格式的舞台指示标签</div>
+      </div>
+      <div class="shortcut-item" onclick="fixPunctuation(); toast('已统一标点')">
+        <div class="name">统一标点符号</div>
+        <div class="desc">英文标点 → 中文标点</div>
+      </div>
+      <div class="shortcut-item" onclick="fixWhitespace(); toast('已精简空白')">
+        <div class="name">精简空白字符</div>
+        <div class="desc">去除多余空格、空行、统一换行</div>
+      </div>
+      <div class="shortcut-item" onclick="fixDialogueFormat(); toast('已整理对话格式')">
+        <div class="name">整理对话格式</div>
+        <div class="desc">统一对话格式，精简多余空行</div>
+      </div>
+      <div class="shortcut-item" onclick="fixSRT(); toast('已修复字幕时间轴')">
+        <div class="name">字幕时间轴修复</div>
+        <div class="desc">修复 SRT 字幕格式问题</div>
+      </div>
+      <div class="shortcut-item" onclick="fixMarkdown(); toast('已格式化 Markdown')">
+        <div class="name">Markdown 格式化</div>
+        <div class="desc">整理 Markdown 格式，清除多余标记</div>
+      </div>
+      <div class="shortcut-item" onclick="fixJson(); toast('已格式化 JSON')">
+        <div class="name">JSON 格式化</div>
+        <div class="desc">美化/压缩 JSON 格式</div>
+      </div>
+      <div class="shortcut-item" onclick="normalizeLineBreaks(); toast('已统一换行符')">
+        <div class="name">统一换行符</div>
+        <div class="desc">将所有换行统一为 LF (Unix格式)</div>
+      </div>
+    </div>
+    <div class="modal-actions-left">
+      <button onclick="closeModal('shortcutsModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var editor, lineNumbers, currentFileName = '', detectedFormat = 'txt', findIndex = -1, findMatches = [];
+
+function $(id) { return document.getElementById(id); }
+
+function init() {
+  editor = $('editor');
+  lineNumbers = $('lineNumbers');
+  updateLineNumbers();
+  updateStats();
+}
+
+function onEditorInput() {
+  updateLineNumbers();
+  updateStats();
+  detectFormat();
+}
+
+function updateLineNumbers() {
+  var lines = editor.value.split('\n').length;
+  var html = '';
+  for (var i = 1; i <= lines; i++) html += i + '\n';
+  lineNumbers.textContent = html;
+}
+
+function syncScroll() {
+  lineNumbers.scrollTop = editor.scrollTop;
+}
+
+function updateStats() {
+  var lines = editor.value.split('\n').length;
+  var chars = editor.value.length;
+  $('lineCount').textContent = lines;
+  $('charCount').textContent = chars;
+}
+
+function detectFormat() {
+  var text = editor.value.trim();
+  var ext = currentFileName.split('.').pop().toLowerCase();
+  var fmt = 'TXT 纯文本', badge = 'TXT', df = 'txt';
+  if (ext === 'srt' || (text.match(/^\d+\s*\n\d{2}:\d{2}:\d{2}/) && text.match(/\d{2}:\d{2}:\d{2}.*-->/))) {
+    fmt = 'SRT 字幕'; badge = 'SRT'; df = 'srt';
+  } else if (ext === 'vtt' || text.indexOf('WEBVTT') === 0) {
+    fmt = 'WebVTT 字幕'; badge = 'VTT'; df = 'vtt';
+  } else if (ext === 'ass' || text.indexOf('[Script Info]') !== -1) {
+    fmt = 'ASS 字幕'; badge = 'ASS'; df = 'ass';
+  } else if (ext === 'md' || text.match(/^#{1,6}\s/m)) {
+    fmt = 'Markdown'; badge = 'MD'; df = 'md';
+  } else if (ext === 'json') {
+    fmt = 'JSON 数据'; badge = 'JSON'; df = 'json';
+  } else if (isScript(text)) {
+    fmt = '剧本/对白'; badge = 'SCRIPT'; df = 'script';
+  }
+  detectedFormat = df;
+  $('fmtText').textContent = fmt;
+  $('formatBadge').textContent = badge;
+}
+
+function isScript(text) {
+  var patterns = [/角色[：:]/, /人物[：:]/, /【\w+】/, /^\([^)]{2,}\)$/m, /^[A-Z\u4e00-\u9fa5]{2,}[：:]\s*.+/m];
+  var score = 0;
+  for (var i = 0; i < patterns.length; i++) { if (patterns[i].test(text)) score++; }
+  return score >= 2;
+}
+
+// 文件处理
+$('fileInput').addEventListener('change', function(e) {
+  Array.from(e.target.files).forEach(function(f) {
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      editor.value = ev.target.result;
+      currentFileName = f.name;
+      onEditorInput();
+      toast('已加载: ' + f.name);
+    };
+    reader.readAsText(f, 'UTF-8');
+  });
+  this.value = '';
+});
+
+function onDragOver(e) { e.preventDefault(); $('editorWrap').classList.add('drag-over'); }
+function onDragLeave(e) { $('editorWrap').classList.remove('drag-over'); }
+function onDrop(e) {
+  e.preventDefault();
+  $('editorWrap').classList.remove('drag-over');
+  if (e.dataTransfer.files.length > 0) {
+    Array.from(e.dataTransfer.files).forEach(function(f) {
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var val = ev.target.result;
+        if (editor.value && val.trim()) {
+          if (!confirm('追加到当前内容？\n\n确定=追加 / 取消=替换')) {
+            editor.value = val;
+          } else {
+            editor.value += '\n\n' + val;
+          }
+        } else {
+          editor.value = val;
+        }
+        currentFileName = f.name;
+        onEditorInput();
+        toast('已加载: ' + f.name);
+      };
+      reader.readAsText(f, 'UTF-8');
+    });
+  }
+}
+
+async function pasteFromClipboard() {
+  try {
+    var text = await navigator.clipboard.readText();
+    if (!text) { toast('粘贴板为空'); return; }
+    if (editor.value && text) {
+      if (confirm('追加到当前内容？\n\n确定=追加 / 取消=替换')) {
+        editor.value += '\n\n' + text;
+      } else {
+        editor.value = text;
+      }
+    } else {
+      editor.value = text;
+    }
+    onEditorInput();
+    toast('已粘贴 ' + text.length + ' 字符');
+  } catch(e) {
+    toast('粘贴失败，请手动 Ctrl+V');
+  }
+}
+
+// 格式检查
+function runChecks() {
+  if (!editor.value.trim()) { toast('请先输入或加载内容'); return; }
+  var text = editor.value;
+  var results = [];
+
+  var bracketMatches = text.match(/【([^】]+)】/g) || [];
+  if (bracketMatches.length > 0) {
+    results.push({ icon: 'warn', text: '发现【舞台指示】标签', detail: '共 ' + bracketMatches.length + ' 处，例: ' + bracketMatches[0], fix: 'fixRemoveBrackets', fixLabel: '去除所有' });
+  } else {
+    results.push({ icon: 'ok', text: '无【舞台指示】标签', detail: '✓ 干净' });
+  }
+
+  var enPunct = (text.match(/[,.!?;:'"()]/g) || []).length;
+  var zhPunct = (text.match(/[，。！？；：""''（）]/g) || []).length;
+  if (enPunct > zhPunct && enPunct > 3) {
+    results.push({ icon: 'warn', text: '发现英文标点', detail: '英文 ' + enPunct + ' 处 vs 中文 ' + zhPunct + ' 处', fix: 'fixPunctuation', fixLabel: '转中文标点' });
+  } else if (zhPunct > 0 || enPunct > 0) {
+    results.push({ icon: 'ok', text: '标点符号', detail: '中文 ' + zhPunct + ' 处 / 英文 ' + enPunct + ' 处' });
+  }
+
+  var doubleBreaks = (text.match(/\n\n\n+/g) || []).length;
+  if (doubleBreaks > 0) {
+    results.push({ icon: 'warn', text: '连续空行过多', detail: doubleBreaks + ' 处连续3个以上换行', fix: 'fixWhitespace', fixLabel: '精简空行' });
+  } else {
+    results.push({ icon: 'ok', text: '空行正常', detail: '✓ 无连续多余空行' });
+  }
+
+  var trailingSpaces = (text.match(/[^\n]  \n/g) || []).length;
+  if (trailingSpaces > 0) {
+    results.push({ icon: 'warn', text: '行尾多余空格', detail: trailingSpaces + ' 行存在行尾空格', fix: 'fixWhitespace', fixLabel: '去除空格' });
+  } else {
+    results.push({ icon: 'ok', text: '无行尾空格', detail: '✓ 干净' });
+  }
+
+  var fullWidthSpaces = (text.match(/　+/g) || []).length;
+  if (fullWidthSpaces > 0) {
+    results.push({ icon: 'warn', text: '发现全角空格', detail: fullWidthSpaces + ' 处全角空格', fix: 'fixWhitespace', fixLabel: '去除全角空格' });
+  } else {
+    results.push({ icon: 'ok', text: '无全角空格', detail: '✓ 正常' });
+  }
+
+  if (detectedFormat === 'srt') {
+    var srtBlocks = text.split(/\n\n+/);
+    var badBlocks = 0;
+    for (var i = 0; i < srtBlocks.length; i++) {
+      var lines = srtBlocks[i].trim().split('\n');
+      if (lines.length >= 2 && !lines[1].match(/\d{2}:\d{2}:\d{2}/)) badBlocks++;
+    }
+    if (badBlocks > 0) {
+      results.push({ icon: 'error', text: 'SRT 时间轴格式错误', detail: badBlocks + ' 个字幕块时间轴格式异常', fix: 'fixSRT', fixLabel: '修复时间轴' });
+    } else {
+      results.push({ icon: 'ok', text: 'SRT 格式正常', detail: srtBlocks.length + ' 个字幕块' });
+    }
+  }
+
+  if (detectedFormat === 'json') {
+    try { JSON.parse(text); results.push({ icon: 'ok', text: 'JSON 格式正确', detail: '✓ 可解析' }); }
+    catch(e) { results.push({ icon: 'error', text: 'JSON 格式错误', detail: e.message, fix: 'fixJson', fixLabel: '尝试修复' }); }
+  }
+
+  if (detectedFormat === 'md') {
+    var brokenLinks = (text.match(/\[([^\]]+)\]\(\)/g) || []).length;
+    if (brokenLinks > 0) {
+      results.push({ icon: 'warn', text: '发现空链接', detail: brokenLinks + ' 个空链接 []()' });
+    } else {
+      results.push({ icon: 'ok', text: 'Markdown 链接正常', detail: '✓ 无空链接' });
+    }
+  }
+
+  var words = text.match(/[\u4e00-\u9fa5]{2,}/g) || [];
+  var wordCount = {};
+  for (var i = 0; i < words.length; i++) { var w = words[i]; wordCount[w] = (wordCount[w] || 0) + 1; }
+  var repeats = [];
+  var keys = Object.keys(wordCount);
+  for (var i = 0; i < keys.length; i++) { var kw = keys[i]; if (wordCount[kw] >= 5 && kw.length >= 3) repeats.push([kw, wordCount[kw]]); }
+  if (repeats.length > 0) {
+    repeats.sort(function(a,b){ return b[1]-a[1]; });
+    var top = repeats.slice(0, 3);
+    results.push({ icon: 'warn', text: '高频重复词', detail: top.map(function(e){ return '"'+e[0]+'"×'+e[1]; }).join(' | ') });
+  } else {
+    results.push({ icon: 'ok', text: '无异常重复词', detail: '✓ 正常' });
+  }
+
+  renderCheckResults(results);
+  $('checkModal').classList.add('show');
+}
+
+function renderCheckResults(results) {
+  var container = $('checkResults');
+  var html = '';
+  for (var i = 0; i < results.length; i++) {
+    var r = results[i];
+    var icon = r.icon === 'ok' ? '✓' : r.icon === 'warn' ? '⚠' : '✗';
+    html += '<div class="check-item">' +
+      '<div class="icon ' + r.icon + '">' + icon + '</div>' +
+      '<div class="text">' + r.text + '</div>' +
+      '<div class="detail">' + (r.detail || '') + '</div>' +
+      (r.fix ? '<button class="fix-btn" onclick="applyFix(\'' + r.fix + '\')">' + r.fixLabel + '</button>' : '') +
+      '</div>';
+  }
+  container.innerHTML = html;
+}
+
+function applyFix(fixFn) {
+  window[fixFn]();
+  closeModal('checkModal');
+  toast('已修复');
+}
+
+function applyAllFixes() {
+  fixRemoveBrackets();
+  fixPunctuation();
+  fixWhitespace();
+  if (detectedFormat === 'srt') fixSRT();
+  if (detectedFormat === 'json') fixJson();
+  closeModal('checkModal');
+  toast('已应用全部修复');
+}
+
+// 修复函数
+function fixRemoveBrackets() { editor.value = editor.value.replace(/【([^】]+)】/g, ''); onEditorInput(); }
+
+function fixPunctuation() {
+  var map = { ',':'，', '.':'。', '!':'！', '?':'？', ':':'：', ';':'；', '\'':'"', '"':'"', '(':'（', ')':'）' };
+  var text = editor.value;
+  var keys = Object.keys(map);
+  for (var i = 0; i < keys.length; i++) { text = text.split(keys[i]).join(map[keys[i]]); }
+  editor.value = text;
+  onEditorInput();
+}
+
+function fixWhitespace() {
+  var text = editor.value;
+  text = text.replace(/\t/g, ' ');
+  text = text.replace(/ {2,}/g, ' ');
+  text = text.replace(/　+/g, '');
+  text = text.replace(/\n{3,}/g, '\n\n');
+  text = text.trim();
+  editor.value = text;
+  onEditorInput();
+}
+
+function fixDialogueFormat() {
+  var text = editor.value;
+  text = text.replace(/【([^】]+)】/g, '');
+  text = text.replace(/\n{3,}/g, '\n\n');
+  text = text.replace(/ +/g, ' ');
+  editor.value = text.trim();
+  onEditorInput();
+}
+
+function fixSRT() {
+  var text = editor.value;
+  text = text.replace(/(\d)\n(\d{2}:)/g, '$1\n\n$2');
+  text = text.replace(/,/g, '.');
+  editor.value = text.trim();
+  onEditorInput();
+}
+
+function fixMarkdown() {
+  var text = editor.value;
+  text = text.replace(/\*{3,}/g, '**');
+  text = text.replace(/_{3,}/g, '__');
+  text = text.replace(/\n{3,}/g, '\n\n');
+  text = text.replace(/ +\n/g, '\n');
+  editor.value = text.trim();
+  onEditorInput();
+}
+
+function fixJson() {
+  try {
+    var parsed = JSON.parse(editor.value);
+    editor.value = JSON.stringify(parsed, null, 2);
+    onEditorInput();
+  } catch(e) { toast('JSON修复失败: ' + e.message); }
+}
+
+function normalizeLineBreaks() { editor.value = editor.value.replace(/\r\n/g, '\n').replace(/\r/g, '\n'); onEditorInput(); }
+
+// 快捷修改面板
+function showShortcuts() {
+  if (!editor.value.trim()) { toast('请先输入或加载内容'); return; }
+  $('shortcutsModal').classList.add('show');
+}
+
+// 查找替换
+function toggleFind() {
+  var bar = $('findBar');
+  bar.classList.toggle('show');
+  if (bar.classList.contains('show')) { setTimeout(function(){ $('findInput').focus(); }, 50); }
+}
+
+function onFindInput() { findAll(); }
+
+function findAll() {
+  var needle = $('findInput').value;
+  if (!needle) { findMatches = []; findIndex = -1; updateFindInfo(); return; }
+  var haystack = editor.value;
+  findMatches = [];
+  try {
+    var re = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    var m;
+    var count = 0;
+    while ((m = re.exec(haystack)) !== null) { findMatches.push(m.index); count++; if (count > 500) break; }
+  } catch(e) { findMatches = []; }
+  findIndex = findMatches.length > 0 ? 0 : -1;
+  updateFindInfo();
+}
+
+function findNext() {
+  if (findMatches.length === 0) { findAll(); return; }
+  findIndex = (findIndex + 1) % findMatches.length;
+  scrollToMatch();
+  updateFindInfo();
+}
+
+function findPrev() {
+  if (findMatches.length === 0) { findAll(); return; }
+  findIndex = (findIndex - 1 + findMatches.length) % findMatches.length;
+  scrollToMatch();
+  updateFindInfo();
+}
+
+function scrollToMatch() {
+  if (findIndex < 0 || findMatches.length === 0) return;
+  var pos = findMatches[findIndex];
+  var lines = editor.value.substring(0, pos).split('\n').length - 1;
+  editor.scrollTop = Math.max(0, lines * 20.8 - editor.clientHeight / 2);
+}
+
+function updateFindInfo() {
+  var info = $('findInfo');
+  info.textContent = findMatches.length > 0 ? (findIndex + 1) + ' / ' + findMatches.length : '';
+}
+
+function replaceOne() {
+  var needle = $('findInput').value;
+  var replacement = $('replaceInput').value;
+  if (!needle) return;
+  var ci = editor.value.indexOf(needle);
+  if (ci !== -1) {
+    editor.value = editor.value.substring(0, ci) + replacement + editor.value.substring(ci + needle.length);
+    findAll();
+  } else {
+    toast('没有找到: ' + needle);
+  }
+}
+
+function replaceAll() {
+  var needle = $('findInput').value;
+  var replacement = $('replaceInput').value;
+  if (!needle) return;
+  var count = 0;
+  editor.value = editor.value.split(needle).join(replacement);
+  onEditorInput();
+  toast('已全部替换');
+}
+
+// 导出
+function copyText() {
+  if (!editor.value) { toast('没有内容'); return; }
+  navigator.clipboard.writeText(editor.value).then(function() {
+    toast('已复制 ' + editor.value.length + ' 字符');
+  }).catch(function() { toast('复制失败，请手动选择复制'); });
+}
+
+function downloadTxt() {
+  if (!editor.value) { toast('没有内容'); return; }
+  var blob = new Blob([editor.value], { type: 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = (currentFileName || 'document') + '.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('已下载 .txt');
+}
+
+function downloadMd() {
+  if (!editor.value) { toast('没有内容'); return; }
+  var name = currentFileName ? currentFileName.replace(/\.[^.]+$/, '') : 'document';
+  var blob = new Blob([editor.value], { type: 'text/markdown;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = name + '.md';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('已下载 .md');
+}
+
+// 弹窗
+function closeModal(id) { $(id).classList.remove('show'); }
+
+var toastTimer;
+function toast(msg) {
+  var t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2000);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
